@@ -1,0 +1,46 @@
+import ta
+
+def otc_1m_signal(data):
+    close = data['close']
+    high = data['high']
+    low = data['low']
+
+    rsi = ta.momentum.RSIIndicator(close, window=14).rsi().iloc[-1]
+    ema_fast = ta.trend.EMAIndicator(close, window=9).ema_indicator().iloc[-1]
+    ema_slow = ta.trend.EMAIndicator(close, window=21).ema_indicator().iloc[-1]
+    macd = ta.trend.MACD(close).macd_diff().iloc[-1]
+
+    # EMA distance filter (sideways remove)
+    if abs(ema_fast - ema_slow) < 0.05:
+        return None  # ❌ NO TRADE
+
+    # RSI sideways filter
+    if 48 <= rsi <= 52:
+        return None  # ❌ NO TRADE
+
+    last_high = high.iloc[-1]
+    last_low = low.iloc[-1]
+    last_close = close.iloc[-1]
+
+    upper_wick = last_high - last_close
+    lower_wick = last_close - last_low
+
+    # 🔼 CALL (High probability)
+    if (
+        ema_fast > ema_slow and
+        rsi < 35 and
+        macd > 0 and
+        lower_wick > upper_wick * 1.2
+    ):
+        return "CALL 🔼 (1M OTC)"
+
+    # 🔽 PUT (High probability)
+    if (
+        ema_fast < ema_slow and
+        rsi > 65 and
+        macd < 0 and
+        upper_wick > lower_wick * 1.2
+    ):
+        return "PUT 🔽 (1M OTC)"
+
+    return None  # 🔥 MOST IMPORTANT LINE
